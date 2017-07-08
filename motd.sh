@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# clear
+clear
 
 #
 # Test whether bash supports arrays.
@@ -8,23 +8,42 @@
 #
 whotest[0]='test' || (echo 'Failure: arrays not supported in this version of bash. Must be at least version 4 to have associative arrays.' && exit 2)
 
-# Settings
-declare -A settings=(
-    [0]=SYSTEM
-    [1]=DATE
-    [2]=UPTIME
-    [3]=MEMORY
-    [4]=DISKS
-    [5]=LOADAVERAGE
-    [6]=PROCESSES
-    [7]=IP
-    [8]=WEATHER
-    [9]=CPUTEMP
+#############################################################################
+#                                SETTINGS                                   #
+# Comment with a # messages you don't want displayed                        #
+# Change order of items in array to change order of displayed messages      #
+#############################################################################
+
+settings=(
+    LOGOSMALL
+#    LOGOBIG
+    SYSTEM
+    DATE
+    UPTIME
+    MEMORY
+    DISKS
+    LOADAVERAGE
+    PROCESSES
+    IP
+    WEATHER
+    CPUTEMP
+    SSHLOGINS
+    MESSAGES
 )
 
-# do not touch below unles you know what you're doing
+# Accuweather location codes: https://pastebin.com/dbtemx5F
+weatherCode="EUR|UK|UK001|LONDON|"
 
-# 1-red, 2-green, 3-, 4-blue
+# Colour reference
+#    Color     Value
+#    black       0
+#    red         1
+#    green       2
+#    yellow      3
+#    blue        4
+#    magenta     5
+#    cyan        6
+#    white       7
 declare -A colour=(
     [header]=`tput setaf 6`
     [neutral]=`tput setaf 2`
@@ -33,25 +52,54 @@ declare -A colour=(
     [reset]=`tput sgr0`
 )
 
+
+
+#############################################################################
+#                                                                           #
+# DO NOT TOUCH ANYTHING BELOW THIS POINT, UNLESS YOU KNOW WHAT YOU'RE DOING #
+#                                                                           #
+#############################################################################
+
+# Expects two arguments:
+# $1 is the header
+# $2 is the message
 function displayMessage {
-    # $1 is the header
-    # $2 is the value
-#    echo "${colour[header]}$1 ${colour[neutral]}$2"
-    while read line; do
-        echo "${colour[header]}$1 ${colour[neutral]}$line";
-    done <<< "$2"
+    if [ -z "$1" ]; then
+        echo "${colour[neutral]}$2"
+    else
+        while read line; do
+            echo "${colour[header]}$1 ${colour[neutral]}$line";
+        done <<< "$2"
+    fi
 }
 
 function metrics {
     case "$1" in
-    'logoBig')
-        displayMessage 'logo big'
+    'LOGOSMALL')
+        logo="${colour[neutral]}
+         \\\ // ${colour[warning]}
+         ◖ ● ◗
+        ◖ ● ● ◗ ${colour[neutral]}Raspberry Pi${colour[warning]}
+         ◖ ● ◗
+           •
+        "
+        displayMessage '' "$logo"
         ;;
-    'logoSmall')
-        displayMessage 'logo small'
+    'LOGOBIG')
+        logo="${colour[neutral]}
+          .~~.   .~~.
+         '. \ ' ' / .'${colour[warning]}
+          .~ .~~~..~.                      _                          _ 
+         : .~.'~'.~. :     ___ ___ ___ ___| |_ ___ ___ ___ _ _    ___|_|
+        ~ (   ) (   ) ~   |  _| .'|_ -| . | . | -_|  _|  _| | |  | . | |
+       ( : '~'.~.'~' : )  |_| |__,|___|  _|___|___|_| |_| |_  |  |  _|_|
+        ~ .~ (   ) ~. ~               |_|                 |___|  |_|    
+         (  : '~' :  )
+          '~ .~~~. ~'
+              '~'"
+        displayMessage '' "$logo"
         ;;
     'SYSTEM')
-        # uname=`uname -snrvm | cut -d ' ' -f '1 2 3 4 5'`
         uname=`uname -snrmo`
         displayMessage 'System.............:' "${uname}"
         ;;
@@ -60,17 +108,17 @@ function metrics {
         ;;
     'UPTIME')
         let upSeconds="$(/usr/bin/cut -d. -f1 /proc/uptime)"
-        let secs=$((${upSeconds}%60))
-        let mins=$((${upSeconds}/60%60))
-        let hours=$((${upSeconds}/3600%24))
-        let days=$((${upSeconds}/86400))
-        displayMessage 'Uptime.............:' "`printf "%d days, %02dh %02dm %02ds" "$days" "$hours" "$mins" "$secs"`"
+        let sec=$((${upSeconds}%60))
+        let min=$((${upSeconds}/60%60))
+        let hour=$((${upSeconds}/3600%24))
+        let day=$((${upSeconds}/86400))
+        displayMessage 'Uptime.............:' "`printf "%d days, %02dh %02dm %02ds" "$day" "$hour" "$min" "$sec"`"
         ;;
     'MEMORY')
         displayMessage 'Memory.............:' "`cat /proc/meminfo | grep MemFree | awk {'print $2'}`kB (Free) / `cat /proc/meminfo | grep MemTotal | awk {'print $2'}`kB (Total)"
         ;;
     'DISKS')
-        disks=`df -hT -x tmpfs -x vfat | grep "^/dev/" | awk '{print $1" - "$5" (Free) / "$3" (Total)"}'`
+        disks="`df -hT -x tmpfs -x vfat | grep "^/dev/" | awk '{print $1" - "$5" (Free) / "$3" (Total)"}'`"
         displayMessage 'Disk...............:' "$disks"
         ;;
     'LOADAVERAGE')
@@ -84,10 +132,17 @@ function metrics {
         displayMessage 'IP Addresses.......:' "local: `/sbin/ifconfig eth0 | /bin/grep "inet addr" | /usr/bin/cut -d ":" -f 2 | /usr/bin/cut -d " " -f 1`, external: `wget -q -O - http://icanhazip.com/ | tail`"
         ;;
     'WEATHER')
-        displayMessage 'Weather............:' "`curl -s "http://rss.accuweather.com/rss/liveweather_rss.asp?metric=1&locCode=EUR|UK|UK001|LONDON|" | sed -n '/Currently:/ s/.*: \(.*\): \([0-9]*\)\([CF]\).*/\2°\3, \1/p'`"
+        displayMessage 'Weather............:' "`curl -s "http://rss.accuweather.com/rss/liveweather_rss.asp?metric=1&locCode=$weatherCode" | sed -n '/Currently:/ s/.*: \(.*\): \([0-9]*\)\([CF]\).*/\2°\3, \1/p'`"
         ;;
     'CPUTEMP')
         displayMessage 'CPU Temperature....:' "`vcgencmd measure_temp | cut -c "6-20"`"
+        ;;
+    'SSHLOGINS')
+        displayMessage 'SSH Logins.........:' "Currently `who -q | cut -c "9-11" | sed "1 d"` user(s) logged in."
+        ;;
+    'MESSAGES')
+        displayMessage 'Last 3 messages....:' ""
+        displayMessage '' "${colour[reset]}`tail -3 /var/log/messages`"
         ;;
     *)
         # default, do nothing
@@ -95,10 +150,6 @@ function metrics {
     esac
 }
 
-
-# ------------------------------------------
-# displaying messages
-# ------------------------------------------
 
 for K in "${!settings[@]}";
 do
