@@ -1,6 +1,6 @@
 #!/bin/bash
 
-clear
+# clear
 
 #
 # Test whether bash supports arrays.
@@ -14,11 +14,12 @@ declare -A settings=(
     [1]=DATE
     [2]=UPTIME
     [3]=MEMORY
-    [4]=LOADAVERAGE
-    [5]=PROCESSES
-    [6]=IP
-    [7]=WEATHER
-    [8]=CPUTEMP
+    [4]=DISKS
+    [5]=LOADAVERAGE
+    [6]=PROCESSES
+    [7]=IP
+    [8]=WEATHER
+    [9]=CPUTEMP
 )
 
 # do not touch below unles you know what you're doing
@@ -35,11 +36,14 @@ declare -A colour=(
 function displayMessage {
     # $1 is the header
     # $2 is the value
-    echo "${colour[header]}$1 ${colour[neutral]}$2"
+#    echo "${colour[header]}$1 ${colour[neutral]}$2"
+    while read line; do
+        echo "${colour[header]}$1 ${colour[neutral]}$line";
+    done <<< "$2"
 }
 
 function metrics {
-    switch "$1" in
+    case "$1" in
     'logoBig')
         displayMessage 'logo big'
         ;;
@@ -49,7 +53,7 @@ function metrics {
     'SYSTEM')
         # uname=`uname -snrvm | cut -d ' ' -f '1 2 3 4 5'`
         uname=`uname -snrmo`
-        displayMessage 'System.............:' ${uname}
+        displayMessage 'System.............:' "${uname}"
         ;;
     'DATE')
         displayMessage 'Date...............:' "`date +"%A, %e %B %Y, %r"`"
@@ -60,10 +64,14 @@ function metrics {
         let mins=$((${upSeconds}/60%60))
         let hours=$((${upSeconds}/3600%24))
         let days=$((${upSeconds}/86400))
-        displayMessage 'Uptime.............:' `printf "%d days, %02dh %02dm %02ds" "$days" "$hours" "$mins" "$secs"`
+        displayMessage 'Uptime.............:' "`printf "%d days, %02dh %02dm %02ds" "$days" "$hours" "$mins" "$secs"`"
         ;;
     'MEMORY')
         displayMessage 'Memory.............:' "`cat /proc/meminfo | grep MemFree | awk {'print $2'}`kB (Free) / `cat /proc/meminfo | grep MemTotal | awk {'print $2'}`kB (Total)"
+        ;;
+    'DISKS')
+        disks=`df -hT -x tmpfs -x vfat | grep "^/dev/" | awk '{print $1" - "$5" (Free) / "$3" (Total)"}'`
+        displayMessage 'Disk...............:' "$disks"
         ;;
     'LOADAVERAGE')
         read one five fifteen rest < /proc/loadavg
@@ -79,7 +87,7 @@ function metrics {
         displayMessage 'Weather............:' "`curl -s "http://rss.accuweather.com/rss/liveweather_rss.asp?metric=1&locCode=EUR|UK|UK001|LONDON|" | sed -n '/Currently:/ s/.*: \(.*\): \([0-9]*\)\([CF]\).*/\2°\3, \1/p'`"
         ;;
     'CPUTEMP')
-        displayMessage 'CPU temperature....:' "`vcgencmd measure_temp | cut -c "6-20"`"
+        displayMessage 'CPU Temperature....:' "`vcgencmd measure_temp | cut -c "6-20"`"
         ;;
     *)
         # default, do nothing
@@ -95,7 +103,7 @@ function metrics {
 for K in "${!settings[@]}";
 do
     metrics "${settings[$K]}"
-done | sort -rn -k3
+done
 
 echo "${colour[reset]}"
 
