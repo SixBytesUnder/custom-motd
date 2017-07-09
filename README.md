@@ -62,9 +62,10 @@ At the top of the file are variables allowing customization of the messages:
   Change order of items in array to change order of displayed messages.
 
 - `weatherCode` set region code for the weather message.
-  Full list of available Accuweather location codes available here: [Accuweather location codes](accuweather_location_codes.txt)
+  Full list of available [Accuweather location codes](accuweather_location_codes.txt)
 
 - `colour` array, lets you set your own clours. List of colour codes:
+
   | Colour | Value |
   |--------|:-----:|
   | black  |   0   |
