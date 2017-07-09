@@ -100,8 +100,7 @@ function metrics {
         displayMessage '' "$logo"
         ;;
     'SYSTEM')
-        uname=`uname -snrmo`
-        displayMessage 'System.............:' "${uname}"
+        displayMessage 'System.............:' "`uname -snrmo`"
         ;;
     'DATE')
         displayMessage 'Date...............:' "`date +"%A, %e %B %Y, %r"`"
