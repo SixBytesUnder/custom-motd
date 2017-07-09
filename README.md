@@ -65,6 +65,7 @@ At the top of the file are variables allowing customization of the messages:
   Full list of available Accuweather location codes available here: [Accuweather location codes](accuweather_location_codes.txt)
 
 - `colour` array, lets you set your own clours. List of colour codes:
+
   | Colour | Value |
   |--------|:-----:|
   | black  |   0   |
