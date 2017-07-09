@@ -31,7 +31,7 @@ settings=(
     MESSAGES
 )
 
-# Accuweather location codes: https://pastebin.com/dbtemx5F
+# Accuweather location codes: https://github.com/SixBytesUnder/custom-motd/blob/master/accuweather_location_codes.txt
 weatherCode="EUR|UK|UK001|LONDON|"
 
 # Colour reference
