@@ -76,3 +76,7 @@ At the top of the file are variables allowing customization of the messages:
   | magenta|   5   |
   | cyan   |   6   |
   | white  |   7   |
+
+## License
+
+[MIT](https://github.com/SixBytesUnder/custom-motd/blob/master/LICENSE)
