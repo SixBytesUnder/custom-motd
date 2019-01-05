@@ -35,7 +35,7 @@ settings=(
 weatherCode="EUR|UK|UK001|LONDON|"
 
 # Colour reference
-#    Color     Value
+#    Colour    Value
 #    black       0
 #    red         1
 #    green       2
@@ -128,7 +128,23 @@ function metrics {
         displayMessage 'Running Processes..:' "`ps ax | wc -l | tr -d " "`"
         ;;
     'IP')
-        displayMessage 'IP Addresses.......:' "local: `/sbin/ifconfig eth0 | /bin/grep "inet addr" | /usr/bin/cut -d ":" -f 2 | /usr/bin/cut -d " " -f 1`, external: `wget -q -O - http://icanhazip.com/ | tail`"
+        lip=$(/sbin/ifconfig eth0 | /bin/grep "inet addr" | /usr/bin/cut -d ":" -f 2 | /usr/bin/cut -d " " -f 1)
+        eip=$(wget -q -O - http://icanhazip.com/ | tail)
+        if [ "$lip" ]; then
+            localIP="local: ${lip}"
+        else
+            localIP=""
+        fi
+        if [ "$eip" ]; then
+            if [ "$lip" ]; then
+                externalIP=", external: ${eip}"
+            else
+                externalIP="external: ${eip}"
+            fi
+        else
+            externalIP=""
+        fi
+        displayMessage 'IP Addresses.......:' "${localIP}${externalIP}"
         ;;
     'WEATHER')
         displayMessage 'Weather............:' "`curl -s "http://rss.accuweather.com/rss/liveweather_rss.asp?metric=1&locCode=$weatherCode" | sed -n '/Currently:/ s/.*: \(.*\): \([0-9]*\)\([CF]\).*/\2°\3, \1/p'`"
@@ -156,4 +172,3 @@ do
 done
 
 echo "${colour[reset]}"
-
