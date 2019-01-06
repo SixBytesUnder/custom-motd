@@ -17,10 +17,10 @@ The following steps may vary depending on the OS.
   $ sudo chmod +x /etc/profile.d/motd.sh
   ```
     
-  Just run the script to test if it works
+  Simply execute the script to test if it works
   
   ```bash
-  ./etc/profile.d/motd.sh
+  ./motd.sh
   ```
   
 - You can remove default MOTD, but it's not necessary since the script will clean the screen anyway.
@@ -63,6 +63,8 @@ At the top of the file are variables allowing customization of the messages:
 
 - `weatherCode` set region code for the weather message.
   Full list of available [Accuweather location codes](accuweather_location_codes.txt)
+
+- `degrees` change value to "C" to show all temperatures in Celsius or "F" for Fahrenheit
 
 - `colour` array, lets you set your own clours. List of colour codes:
 
