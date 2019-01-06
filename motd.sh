@@ -27,12 +27,16 @@ settings=(
     IP
     WEATHER
     CPUTEMP
+    GPUTEMP
     SSHLOGINS
     MESSAGES
 )
 
 # Accuweather location codes: https://github.com/SixBytesUnder/custom-motd/blob/master/accuweather_location_codes.txt
 weatherCode="EUR|UK|UK001|LONDON|"
+
+# Show temperatures in "C" for Celsius or "F" for Fahrenheit
+degrees=C
 
 # Colour reference
 #    Colour    Value
@@ -147,10 +151,27 @@ function metrics {
         displayMessage 'IP Addresses.......:' "${localIP}${externalIP}"
         ;;
     'WEATHER')
-        displayMessage 'Weather............:' "`curl -s "http://rss.accuweather.com/rss/liveweather_rss.asp?metric=1&locCode=$weatherCode" | sed -n '/Currently:/ s/.*: \(.*\): \([0-9]*\)\([CF]\).*/\2°\3, \1/p'`"
+        if [ "$degrees" == "F" ]; then
+            metric=0
+        else
+            metric=1
+        fi
+        displayMessage 'Weather............:' "`curl -s "http://rss.accuweather.com/rss/liveweather_rss.asp?metric=$metric&locCode=$weatherCode" | sed -n '/Currently:/ s/.*: \(.*\): \([0-9]*\)\([CF]\).*/\2°\3, \1/p'`"
         ;;
     'CPUTEMP')
-        displayMessage 'CPU Temperature....:' "`vcgencmd measure_temp | cut -c "6-20"`"
+        cpu=$(</sys/class/thermal/thermal_zone0/temp)
+        cpu=$(echo "${cpu} 100 0.1" | awk '{printf "%.2f\n", $1/$2*$3}')
+        if [ "$degrees" == "F" ]; then
+            cpu=$(echo "1.8 $cpu 32" | awk '{printf "%.2f\n", $1*$2+$3}')
+        fi
+        displayMessage 'CPU Temperature....:' "${cpu}°$degrees"
+        ;;
+    'GPUTEMP')
+        gpu=$(/opt/vc/bin/vcgencmd measure_temp | awk -F "[=\']" '{print $2}')
+        if [ "$degrees" == "F" ]; then
+            gpu=$(echo "1.8 $gpu 32" | awk '{printf "%.2f\n", $1*$2+$3}')
+        fi
+        displayMessage 'GPU Temperature....:' "${gpu}°$degrees"
         ;;
     'SSHLOGINS')
         displayMessage 'SSH Logins.........:' "Currently `who -q | cut -c "9-11" | sed "1 d"` user(s) logged in."
