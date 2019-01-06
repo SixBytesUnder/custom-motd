@@ -6,7 +6,7 @@ clear
 # Test whether bash supports arrays.
 # (Support for arrays was only added recently.)
 #
-whotest[0]='test' || (echo 'Failure: arrays not supported in this version of bash. Must be at least version 4 to have associative arrays.' && exit 2)
+whotest[0]='test' || (echo 'Failure: arrays not supported in your version of bash. Must be at least version 4 to have associative arrays.' && exit 2)
 
 #############################################################################
 #                                SETTINGS                                   #
@@ -55,7 +55,6 @@ declare -A colour=(
     [warning]=`tput setaf 1`
     [reset]=`tput sgr0`
 )
-
 
 
 #############################################################################
