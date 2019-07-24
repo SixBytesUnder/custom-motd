@@ -66,7 +66,7 @@ At the top of the file are variables allowing customization of the messages:
 
 - `degrees` change value to "C" to show all temperatures in Celsius or "F" for Fahrenheit
 
-- `colour` array, lets you set your own clours. List of colour codes:
+- `colour` array, lets you set your own colours. List of colour codes:
 
   | Colour | Value |
   |--------|:-----:|
