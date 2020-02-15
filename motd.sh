@@ -50,11 +50,11 @@ degrees=C
 #    cyan        6
 #    white       7
 declare -A colour=(
-    [header]=`tput setaf 6`
-    [neutral]=`tput setaf 2`
-    [info]=`tput setaf 4`
-    [warning]=`tput setaf 1`
-    [reset]=`tput sgr0`
+    [header]=$(tput setaf 6)
+    [neutral]=$(tput setaf 2)
+    [info]=$(tput setaf 4)
+    [warning]=$(tput setaf 1)
+    [reset]=$(tput sgr0)
 )
 
 
@@ -104,10 +104,10 @@ function metrics {
         displayMessage '' "$logo"
         ;;
     'SYSTEM')
-        displayMessage 'System.............:' "`uname -snrmo`"
+        displayMessage 'System.............:' "$(uname -snrmo)"
         ;;
     'DATE')
-        displayMessage 'Date...............:' "`date +"%A, %e %B %Y, %r"`"
+        displayMessage 'Date...............:' "$(date +"%A, %e %B %Y, %r")"
         ;;
     'UPTIME')
         let upSeconds="$(/usr/bin/cut -d. -f1 /proc/uptime)"
@@ -115,21 +115,20 @@ function metrics {
         let min=$((${upSeconds}/60%60))
         let hour=$((${upSeconds}/3600%24))
         let day=$((${upSeconds}/86400))
-        displayMessage 'Uptime.............:' "`printf "%d days, %02dh %02dm %02ds" "$day" "$hour" "$min" "$sec"`"
+        displayMessage 'Uptime.............:' "$(printf "%d days, %02dh %02dm %02ds" "$day" "$hour" "$min" "$sec")"
         ;;
     'MEMORY')
-        displayMessage 'Memory.............:' "`cat /proc/meminfo | grep MemFree | awk {'print $2'}`kB (Free) / `cat /proc/meminfo | grep MemTotal | awk {'print $2'}`kB (Total)"
+        displayMessage 'Memory.............:' "$(cat /proc/meminfo | grep MemFree | awk {'print $2'})kB (Free) / $(cat /proc/meminfo | grep MemTotal | awk {'print $2'})kB (Total)"
         ;;
     'DISKS')
-        disks="`df -hT -x tmpfs -x vfat | grep "^/dev/" | awk '{print $1" - "$5" (Free) / "$3" (Total)"}'`"
-        displayMessage 'Disk...............:' "$disks"
+        displayMessage 'Disk...............:' "$(df -hT -x tmpfs -x vfat | grep "^/dev/" | awk '{print $1" - "$5" (Free) / "$3" (Total)"}')"
         ;;
     'LOADAVERAGE')
         read one five fifteen rest < /proc/loadavg
-        displayMessage 'Load Average.......:' "${one}, ${five}, ${fifteen} (1, 5, 15 min)"
+        displayMessage 'Load average.......:' "${one}, ${five}, ${fifteen} (1, 5, 15 min)"
         ;;
     'PROCESSES')
-        displayMessage 'Running Processes..:' "`ps ax | wc -l | tr -d " "`"
+        displayMessage 'Running processes..:' "$(ps ax | wc -l | tr -d " ")"
         ;;
     'IP')
         lip=$(/sbin/ifconfig eth0 | /bin/grep "inet addr" | /usr/bin/cut -d ":" -f 2 | /usr/bin/cut -d " " -f 1)
@@ -148,7 +147,7 @@ function metrics {
         else
             externalIP=""
         fi
-        displayMessage 'IP Addresses.......:' "${localIP}${externalIP}"
+        displayMessage 'IP addresses.......:' "${localIP}${externalIP}"
         ;;
     'WEATHER')
         if [ "$degrees" == "F" ]; then
@@ -156,7 +155,7 @@ function metrics {
         else
             metric=1
         fi
-        displayMessage 'Weather............:' "`curl -s "http://rss.accuweather.com/rss/liveweather_rss.asp?metric=$metric&locCode=$weatherCode" | sed -n '/Currently:/ s/.*: \(.*\): \([0-9]*\)\([CF]\).*/\2°\3, \1/p'`"
+        displayMessage 'Weather............:' "$(curl -s "http://rss.accuweather.com/rss/liveweather_rss.asp?metric=$metric&locCode=$weatherCode" | sed -n '/Currently:/ s/.*: \(.*\): \([0-9]*\)\([CF]\).*/\2°\3, \1/p')"
         ;;
     'CPUTEMP')
         cpu=$(</sys/class/thermal/thermal_zone0/temp)
@@ -164,24 +163,24 @@ function metrics {
         if [ "$degrees" == "F" ]; then
             cpu=$(echo "1.8 $cpu 32" | awk '{printf "%.2f\n", $1*$2+$3}')
         fi
-        displayMessage 'CPU Temperature....:' "${cpu}°$degrees"
+        displayMessage 'CPU temperature....:' "${cpu}°$degrees"
         ;;
     'GPUTEMP')
         gpu=$(/opt/vc/bin/vcgencmd measure_temp | awk -F "[=\']" '{print $2}')
         if [ "$degrees" == "F" ]; then
             gpu=$(echo "1.8 $gpu 32" | awk '{printf "%.2f\n", $1*$2+$3}')
         fi
-        displayMessage 'GPU Temperature....:' "${gpu}°$degrees"
+        displayMessage 'GPU temperature....:' "${gpu}°$degrees"
         ;;
     'SSHLOGINS')
-        displayMessage 'SSH Logins.........:' "Currently `who -q | cut -c "9-11" | sed "1 d"` user(s) logged in."
+        displayMessage 'SSH logins.........:' "Currently $(who -q | cut -c "9-11" | sed "1 d") user(s) logged in."
         ;;
     'LASTLOGIN')
         displayMessage 'Last login.........:' "$(last -2 -a -F | awk 'NR==2 {print $1,"on",$3,$4,$5,$6,$7,"from " $15}')"
         ;;
     'MESSAGES')
         displayMessage 'Last 3 messages....:' ""
-        displayMessage '' "${colour[reset]}`tail -3 /var/log/messages`"
+        displayMessage '' "${colour[reset]}$(tail -3 /var/log/messages)"
         ;;
     *)
         # default, do nothing
