@@ -29,6 +29,7 @@ settings=(
     CPUTEMP
     GPUTEMP
     SSHLOGINS
+    LASTLOGIN
     MESSAGES
 )
 
@@ -174,6 +175,9 @@ function metrics {
         ;;
     'SSHLOGINS')
         displayMessage 'SSH Logins.........:' "Currently `who -q | cut -c "9-11" | sed "1 d"` user(s) logged in."
+        ;;
+    'LASTLOGIN')
+        displayMessage 'Last login.........:' "$(last -2 -a -F | awk 'NR==2 {print $1,"on",$3,$4,$5,$6,$7,"from " $15}')"
         ;;
     'MESSAGES')
         displayMessage 'Last 3 messages....:' ""
