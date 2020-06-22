@@ -25,6 +25,9 @@ settings=(
     LOADAVERAGE
     PROCESSES
     IP
+    # Please be aware UPDATES command may take a few seconds to run
+    # If you don't like waiting, just comment it out
+    UPDATES
     WEATHER
     CPUTEMP
     GPUTEMP
@@ -149,6 +152,9 @@ function metrics {
         fi
         displayMessage 'IP addresses.......:' "${localIP}${externalIP}"
         ;;
+    'UPDATES')
+        displayMessage 'Available updates..:' "$(apt-get -s dist-upgrade | tail -n 1 | cut -d' ' -f 10) packets can be updated"
+        ;;
     'WEATHER')
         if [ "$degrees" == "F" ]; then
             metric=0
@@ -166,7 +172,7 @@ function metrics {
         displayMessage 'CPU temperature....:' "${cpu}°$degrees"
         ;;
     'GPUTEMP')
-        gpu=$(/opt/vc/bin/vcgencmd measure_temp | awk -F "[=\']" '{print $2}')
+        gpu=$(/opt/vc/bin/vcgencmd measure_temp | awk -F "[=']" '{print $2}')
         if [ "$degrees" == "F" ]; then
             gpu=$(echo "1.8 $gpu 32" | awk '{printf "%.2f\n", $1*$2+$3}')
         fi
