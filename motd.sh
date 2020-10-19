@@ -134,7 +134,7 @@ function metrics {
         displayMessage 'Running processes..:' "$(ps ax | wc -l | tr -d " ")"
         ;;
     'IP')
-        lip=$(/sbin/ifconfig eth0 | /bin/grep "inet addr" | /usr/bin/cut -d ":" -f 2 | /usr/bin/cut -d " " -f 1)
+        lip=$(ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -f1 -d'/')
         eip=$(wget -q -O - http://icanhazip.com/ | tail)
         if [ "$lip" ]; then
             localIP="local: ${lip}"
