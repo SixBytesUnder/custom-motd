@@ -1,7 +1,7 @@
 Custom MOTD
 ====
 
-#### Highly customizable Message of the Day script for Raspberry Pi ####
+### Highly customizable Message of the Day script for Raspberry Pi ####
 
 ![](motd.png?raw=true "Custom MOTD")
 
@@ -12,6 +12,7 @@ The following steps may vary depending on the OS.
 - Download and save the `motd.sh` bash script onto your machine. Remember to add execute permissions and change the owner:
   
   ```bash
+  $ wget https://raw.githubusercontent.com/SixBytesUnder/custom-motd/master/motd.sh
   $ sudo cp motd.sh /etc/profile.d/motd.sh
   $ sudo chown root:root /etc/profile.d/motd.sh
   $ sudo chmod +x /etc/profile.d/motd.sh
@@ -22,7 +23,10 @@ The following steps may vary depending on the OS.
   ```bash
   ./motd.sh
   ```
-  
+  That's it, from now on every time you ssh into your Raspberry, you should see the custom message of the day.
+
+### All below is optional
+
 - You can remove default MOTD, but it's not necessary since the script will clean the screen anyway.
   
   ```bash
