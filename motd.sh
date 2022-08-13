@@ -153,7 +153,7 @@ function metrics {
         displayMessage 'IP addresses.......:' "${localIP}${externalIP}"
         ;;
     'UPDATES')
-        displayMessage 'Available updates..:' "$(apt-get -s dist-upgrade | tail -n 1 | cut -d' ' -f 10) packets can be updated"
+        displayMessage 'Available updates..:' "$(apt-get -s dist-upgrade | grep -Po '^[[:digit:]]+ (?=upgraded)') packets can be updated"
         ;;
     'WEATHER')
         if [ "$degrees" == "F" ]; then
