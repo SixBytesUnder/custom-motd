@@ -2994,7 +2994,7 @@ City Name = "Strand, ZA" Location = "AFR|ZA|SF011|STRAND" Country = "South Afric
 City Name = "Strasbourg, FR" Location = "EUR|FR|FR001|STRASBOURG" Country = "France"
 City Name = "Stratford-On-Avon, UK" Location = "EUR|UK|UK001|STRATFORD-ON-AVON" Country = "United Kingdom"
 City Name = "Stroud, UK" Location = "EUR|UK|UK001|STROUD" Country = "United Kingdom"
-City Name = "Stuhlweissenburg, HU" Location = "EUR|HU|HU011|SZÉKESFEHÉRVAR" Country = "Hungary"
+City Name = "Szekesfehervar, HU" Location = "EUR|HU|HU011|SZÉKESFEHÉRVÁR" Country = "Hungary"
 City Name = "Stuttgart, DE" Location = "EUR|DE|GM001|STUTTGART" Country = "Germany"
 City Name = "Subotica, CS" Location = "EUR|CS|YI003|SUBOTICA" Country = "Serbia"
 City Name = "Suceava, RO" Location = "EUR|RO|RO035|SUCEAVA" Country = "Romania"
