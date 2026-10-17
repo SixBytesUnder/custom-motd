@@ -117,19 +117,25 @@ function metrics {
         displayMessage 'Date...............:' "$(date +"%A, %e %B %Y, %r")"
         ;;
     'UPTIME')
-        local upSeconds sec min hour day
-        let upSeconds="$(/usr/bin/cut -d. -f1 /proc/uptime)"
-        let sec=$((${upSeconds}%60))
-        let min=$((${upSeconds}/60%60))
-        let hour=$((${upSeconds}/3600%24))
-        let day=$((${upSeconds}/86400))
+        local upSeconds rest sec min hour day
+        IFS=. read -r upSeconds rest < /proc/uptime
+        sec=$(( upSeconds % 60 ))
+        min=$(( upSeconds / 60 % 60 ))
+        hour=$(( upSeconds / 3600 % 24 ))
+        day=$(( upSeconds / 86400 ))
         displayMessage 'Uptime.............:' "$(printf "%d days, %02dh %02dm %02ds" "$day" "$hour" "$min" "$sec")"
         ;;
     'MEMORY')
-        displayMessage 'Memory.............:' "$(cat /proc/meminfo | grep MemAvailable | awk '{print $2}')kB (Available) / $(cat /proc/meminfo | grep MemTotal | awk '{print $2}')kB (Total)"
+        local mem
+        mem=$(awk '
+            /^MemTotal:/     { total = $2 / 1024 }
+            /^MemAvailable:/ { avail = $2 / 1024 }
+            END { printf "%.0f MiB (Available) / %.0f MiB (Total) [%.0f%% used]", avail, total, (total - avail) / total * 100 }
+        ' /proc/meminfo)
+        displayMessage 'Memory.............:' "$mem"
         ;;
     'DISKS')
-        displayMessage 'Disk...............:' "$(df -hT -x tmpfs -x vfat | grep "^/dev/" | awk '{print $1" - "$5" (Free) / "$3" (Total)"}')"
+        displayMessage 'Disk...............:' "$(df -hT -x tmpfs -x devtmpfs -x vfat | awk '/^\/dev\// {print $1" - "$5" (Free) / "$3" (Total)"}')"
         ;;
     'LOADAVERAGE')
         local one five fifteen rest
@@ -180,21 +186,23 @@ function metrics {
         displayMessage 'Weather............:' "${weather:-Unavailable}"
         ;;
     'CPUTEMP')
-        local cpu
-        cpu=$(</sys/class/thermal/thermal_zone0/temp)
-        cpu=$(echo "${cpu} 100 0.1" | awk '{printf "%.2f\n", $1/$2*$3}')
-        if [ "$degrees" == "F" ]; then
-            cpu=$(echo "1.8 $cpu 32" | awk '{printf "%.2f\n", $1*$2+$3}')
+        if [[ -r /sys/class/thermal/thermal_zone0/temp ]]; then
+            local cpu
+            cpu=$(awk -v deg="$degrees" '{
+                c = $1 / 1000
+                printf "%.2f", (deg == "F" ? c * 1.8 + 32 : c)
+            }' /sys/class/thermal/thermal_zone0/temp)
+            displayMessage 'CPU temperature....:' "${cpu}°$degrees"
         fi
-        displayMessage 'CPU temperature....:' "${cpu}°$degrees"
         ;;
     'GPUTEMP')
-        local gpu
-        gpu=$(/usr/bin/vcgencmd measure_temp | awk -F "[=']" '{print $2}')
-        if [ "$degrees" == "F" ]; then
-            gpu=$(echo "1.8 $gpu 32" | awk '{printf "%.2f\n", $1*$2+$3}')
+        if command -v vcgencmd >/dev/null 2>&1; then
+            local gpu
+            gpu=$(vcgencmd measure_temp 2>/dev/null | awk -F "[=']" -v deg="$degrees" '{
+                printf "%.2f", (deg == "F" ? $2 * 1.8 + 32 : $2)
+            }')
+            [[ -n "$gpu" ]] && displayMessage 'GPU temperature....:' "${gpu}°$degrees"
         fi
-        displayMessage 'GPU temperature....:' "${gpu}°$degrees"
         ;;
     'SSHLOGINS')
         displayMessage 'SSH logins.........:' "Currently $(who | wc -l) user(s) logged in."
@@ -219,9 +227,8 @@ function metrics {
 }
 
 
-for K in "${!settings[@]}";
-do
-    metrics "${settings[$K]}"
+for item in "${settings[@]}"; do
+    metrics "$item"
 done
 
 echo "${colour[reset]}"
