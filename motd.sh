@@ -20,6 +20,7 @@ fi
 settings=(
     LOGOSMALL
 #    LOGOBIG
+    MODEL
     SYSTEM
     DATE
     UPTIME
@@ -34,6 +35,9 @@ settings=(
     WEATHER
     CPUTEMP
     GPUTEMP
+    THROTTLED
+    SERVICES
+    DOCKER
     SSHLOGINS
     LASTLOGIN
     MESSAGES
@@ -44,6 +48,14 @@ weatherCode="London"
 
 # Show temperatures in "C" for Celsius or "F" for Fahrenheit
 degrees=C
+
+# Cache TTL in seconds for slow checks (IP, UPDATES, WEATHER). Set to 0 to disable.
+cacheTTL=3600
+
+# Warning thresholds for highlighting metrics in red
+tempWarnC=70
+memWarnPct=85
+diskWarnPct=85
 
 # Colour reference
 #    Colour    Value
@@ -84,6 +96,29 @@ function displayMessage {
     fi
 }
 
+# Caches output of slow commands in /tmp for $cacheTTL seconds
+# Usage: getCached <cache_key> <command...>
+function getCached {
+    local key="$1"
+    shift
+    local cacheFile="/tmp/motd_cache_${UID}_${key}"
+    if (( cacheTTL > 0 )) && [[ -f "$cacheFile" ]]; then
+        local now mtime
+        now=$(date +%s)
+        mtime=$(stat -c %Y "$cacheFile" 2>/dev/null || echo 0)
+        if (( now - mtime < cacheTTL )); then
+            cat "$cacheFile"
+            return 0
+        fi
+    fi
+    local output
+    output=$("$@")
+    if [[ -n "$output" ]] && (( cacheTTL > 0 )); then
+        (umask 077 && printf '%s\n' "$output" > "$cacheFile" 2>/dev/null)
+    fi
+    printf '%s\n' "$output"
+}
+
 function metrics {
     case "$1" in
     'LOGOSMALL')
@@ -110,6 +145,13 @@ function metrics {
               '~'"
         displayMessage '' "$logo"
         ;;
+    'MODEL')
+        if [[ -r /proc/device-tree/model ]]; then
+            local model
+            model=$(tr -d '\0' < /proc/device-tree/model)
+            displayMessage 'Model..............:' "$model"
+        fi
+        ;;
     'SYSTEM')
         displayMessage 'System.............:' "$(uname -snrmo)"
         ;;
@@ -127,15 +169,28 @@ function metrics {
         ;;
     'MEMORY')
         local mem
-        mem=$(awk '
+        mem=$(awk -v warn="$memWarnPct" -v cWarn="${colour[warning]}" -v cNorm="${colour[neutral]}" '
             /^MemTotal:/     { total = $2 / 1024 }
             /^MemAvailable:/ { avail = $2 / 1024 }
-            END { printf "%.0f MiB (Available) / %.0f MiB (Total) [%.0f%% used]", avail, total, (total - avail) / total * 100 }
+            END {
+                usedPct = (total - avail) / total * 100
+                col = (usedPct >= warn) ? cWarn : cNorm
+                printf "%s%.0f MiB (Available) / %.0f MiB (Total) [%.0f%% used]", col, avail, total, usedPct
+            }
         ' /proc/meminfo)
         displayMessage 'Memory.............:' "$mem"
         ;;
     'DISKS')
-        displayMessage 'Disk...............:' "$(df -hT -x tmpfs -x devtmpfs -x vfat | awk '/^\/dev\// {print $1" - "$5" (Free) / "$3" (Total)"}')"
+        local disks
+        disks=$(df -hT -x tmpfs -x devtmpfs -x vfat | awk -v warn="$diskWarnPct" -v cWarn="${colour[warning]}" -v cNorm="${colour[neutral]}" '
+            /^\/dev\// {
+                usedPct = $6
+                sub(/%/, "", usedPct)
+                col = (usedPct + 0 >= warn) ? cWarn : cNorm
+                print col $1 " - " $5 " (Free) / " $3 " (Total) [" $6 " used]"
+            }
+        ')
+        displayMessage 'Disk...............:' "$disks"
         ;;
     'LOADAVERAGE')
         local one five fifteen rest
@@ -148,7 +203,7 @@ function metrics {
     'IP')
         local lip eip localIP externalIP
         lip=$(hostname -I 2>/dev/null | awk '{print $1}')
-        eip=$(curl -sf --max-time 2 https://icanhazip.com/)
+        eip=$(getCached "ext_ip" curl -sf --max-time 2 https://icanhazip.com/)
         if [ "$lip" ]; then
             localIP="local: ${lip}"
         else
@@ -167,30 +222,32 @@ function metrics {
         ;;
     'UPDATES')
         local updates
-        updates=$(LC_ALL=C apt-get -s dist-upgrade | grep -Po '^\d+(?= upgraded)')
+        updates=$(getCached "updates" bash -c "LC_ALL=C apt-get -s dist-upgrade 2>/dev/null | grep -Po '^\d+(?= upgraded)' || echo 0")
         if [ -z "$updates" ]; then
             updates=0
         fi
         if [ "$updates" -eq 0 ]; then
             displayMessage 'Available updates..:' "System is up to date."
         elif [ "$updates" -eq 1 ]; then
-            displayMessage 'Available updates..:' "1 package can be updated."
+            displayMessage 'Available updates..:' "${colour[warning]}1 package can be updated."
         else
-            displayMessage 'Available updates..:' "$updates packages can be updated."
+            displayMessage 'Available updates..:' "${colour[warning]}$updates packages can be updated."
         fi
         ;;
     'WEATHER')
-        local unit="m" weather
+        local unit="m" weather safeLoc
         [[ "$degrees" == "F" ]] && unit="u"
-        weather=$(curl -sf --max-time 2 "https://wttr.in/${weatherCode}?${unit}&format=%t,+%C")
+        safeLoc="${weatherCode//[^a-zA-Z0-9_-]/_}"
+        weather=$(getCached "weather_${safeLoc}_${unit}" curl -sf --max-time 2 "https://wttr.in/${weatherCode}?${unit}&format=%t,+%C")
         displayMessage 'Weather............:' "${weather:-Unavailable}"
         ;;
     'CPUTEMP')
         if [[ -r /sys/class/thermal/thermal_zone0/temp ]]; then
             local cpu
-            cpu=$(awk -v deg="$degrees" '{
+            cpu=$(awk -v deg="$degrees" -v warn="$tempWarnC" -v cWarn="${colour[warning]}" -v cNorm="${colour[neutral]}" '{
                 c = $1 / 1000
-                printf "%.2f", (deg == "F" ? c * 1.8 + 32 : c)
+                col = (c >= warn) ? cWarn : cNorm
+                printf "%s%.2f", col, (deg == "F" ? c * 1.8 + 32 : c)
             }' /sys/class/thermal/thermal_zone0/temp)
             displayMessage 'CPU temperature....:' "${cpu}°$degrees"
         fi
@@ -198,10 +255,57 @@ function metrics {
     'GPUTEMP')
         if command -v vcgencmd >/dev/null 2>&1; then
             local gpu
-            gpu=$(vcgencmd measure_temp 2>/dev/null | awk -F "[=']" -v deg="$degrees" '{
-                printf "%.2f", (deg == "F" ? $2 * 1.8 + 32 : $2)
+            gpu=$(vcgencmd measure_temp 2>/dev/null | awk -F "[=']" -v deg="$degrees" -v warn="$tempWarnC" -v cWarn="${colour[warning]}" -v cNorm="${colour[neutral]}" '{
+                c = $2 + 0
+                col = (c >= warn) ? cWarn : cNorm
+                printf "%s%.2f", col, (deg == "F" ? c * 1.8 + 32 : c)
             }')
             [[ -n "$gpu" ]] && displayMessage 'GPU temperature....:' "${gpu}°$degrees"
+        fi
+        ;;
+    'THROTTLED')
+        if command -v vcgencmd >/dev/null 2>&1; then
+            local throttledHex throttledVal flags=()
+            throttledHex=$(vcgencmd get_throttled 2>/dev/null | cut -d= -f2)
+            if [[ -n "$throttledHex" ]]; then
+                throttledVal=$(( throttledHex ))
+                if (( throttledVal == 0 )); then
+                    displayMessage 'Throttling.........:' "OK (${throttledHex})"
+                else
+                    (( throttledVal & 0x1 ))     && flags+=("under-voltage active")
+                    (( throttledVal & 0x2 ))     && flags+=("freq capped")
+                    (( throttledVal & 0x4 ))     && flags+=("throttled")
+                    (( throttledVal & 0x8 ))     && flags+=("soft temp limit")
+                    (( throttledVal & 0x10000 )) && flags+=("past under-voltage")
+                    (( throttledVal & 0x20000 )) && flags+=("past freq cap")
+                    (( throttledVal & 0x40000 )) && flags+=("past throttling")
+                    (( throttledVal & 0x80000 )) && flags+=("past temp limit")
+                    local IFS=", "
+                    displayMessage 'Throttling.........:' "${colour[warning]}WARNING (${throttledHex}): ${flags[*]}"
+                fi
+            fi
+        fi
+        ;;
+    'SERVICES')
+        if command -v systemctl >/dev/null 2>&1; then
+            local failedUnits failedCount
+            failedUnits=$(systemctl --failed --no-legend --plain 2>/dev/null | awk '{print $1}')
+            if [[ -z "$failedUnits" ]]; then
+                displayMessage 'Systemd services...:' "All services healthy."
+            else
+                failedCount=$(printf '%s\n' "$failedUnits" | wc -l)
+                displayMessage 'Systemd services...:' "${colour[warning]}${failedCount} failed: $(echo "$failedUnits" | tr '\n' ' ')"
+            fi
+        fi
+        ;;
+    'DOCKER')
+        if command -v docker >/dev/null 2>&1; then
+            local running total
+            running=$(docker ps -q 2>/dev/null | wc -l)
+            total=$(docker ps -aq 2>/dev/null | wc -l)
+            if (( total > 0 )); then
+                displayMessage 'Docker containers..:' "${running} running / ${total} total"
+            fi
         fi
         ;;
     'SSHLOGINS')
