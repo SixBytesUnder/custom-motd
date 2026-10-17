@@ -78,7 +78,7 @@ function displayMessage {
         echo "${colour[neutral]}$2"
     else
         local line
-        while read line; do
+        while IFS= read -r line; do
             echo "${colour[header]}$1 ${colour[neutral]}$line";
         done <<< "$2"
     fi
@@ -161,7 +161,7 @@ function metrics {
         ;;
     'UPDATES')
         local updates
-        updates=$(apt-get -s dist-upgrade | grep -Po '^\d+(?= upgraded)')
+        updates=$(LC_ALL=C apt-get -s dist-upgrade | grep -Po '^\d+(?= upgraded)')
         if [ -z "$updates" ]; then
             updates=0
         fi
