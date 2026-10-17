@@ -24,8 +24,7 @@ settings=(
     LOADAVERAGE
     PROCESSES
     IP
-    # Note: External IP, UPDATES, and WEATHER are cached for $cacheTTL seconds
-    # to keep logins fast. Comment out any module you do not wish to run.
+    # Note: External IP, UPDATES, and WEATHER are cached for $cacheTTL seconds to keep logins fast.
     UPDATES
     WEATHER
     CPUTEMP
