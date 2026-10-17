@@ -6,7 +6,10 @@ clear
 # Test whether bash supports arrays.
 # (Support for arrays was only added recently.)
 #
-whotest[0]='test' || (echo 'Failure: arrays not supported in your version of bash. Must be at least version 4 to have associative arrays.' && exit 2)
+if (( BASH_VERSINFO[0] < 4 )); then
+  echo 'Failure: arrays not supported in your version of bash. Must be at least version 4 to have associative arrays.' >&2
+  exit 2
+fi
 
 #############################################################################
 #                                SETTINGS                                   #
@@ -36,8 +39,8 @@ settings=(
     MESSAGES
 )
 
-# Accuweather location codes: https://github.com/SixBytesUnder/custom-motd/blob/master/accuweather_location_codes.txt
-weatherCode="EUR|UK|UK001|LONDON|"
+# Location for wttr.in weather service (e.g. "London", "New+York", or leave empty for auto-detection)
+weatherCode="London"
 
 # Show temperatures in "C" for Celsius or "F" for Fahrenheit
 degrees=C
@@ -121,7 +124,7 @@ function metrics {
         displayMessage 'Uptime.............:' "$(printf "%d days, %02dh %02dm %02ds" "$day" "$hour" "$min" "$sec")"
         ;;
     'MEMORY')
-        displayMessage 'Memory.............:' "$(cat /proc/meminfo | grep MemFree | awk {'print $2'})kB (Free) / $(cat /proc/meminfo | grep MemTotal | awk {'print $2'})kB (Total)"
+        displayMessage 'Memory.............:' "$(cat /proc/meminfo | grep MemAvailable | awk '{print $2}')kB (Available) / $(cat /proc/meminfo | grep MemTotal | awk '{print $2}')kB (Total)"
         ;;
     'DISKS')
         displayMessage 'Disk...............:' "$(df -hT -x tmpfs -x vfat | grep "^/dev/" | awk '{print $1" - "$5" (Free) / "$3" (Total)"}')"
@@ -131,10 +134,10 @@ function metrics {
         displayMessage 'Load average.......:' "${one}, ${five}, ${fifteen} (1, 5, 15 min)"
         ;;
     'PROCESSES')
-        displayMessage 'Running processes..:' "$(ps ax | wc -l | tr -d " ")"
+        displayMessage 'Running processes..:' "$(ps -e --no-headers | wc -l)"
         ;;
     'IP')
-        lip=$(ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -f1 -d'/')
+        lip=$(hostname -I 2>/dev/null | awk '{print $1}')
         eip=$(wget -q -O - http://icanhazip.com/ | tail)
         if [ "$lip" ]; then
             localIP="local: ${lip}"
@@ -166,12 +169,10 @@ function metrics {
         fi
         ;;
     'WEATHER')
-        if [ "$degrees" == "F" ]; then
-            metric=0
-        else
-            metric=1
-        fi
-        displayMessage 'Weather............:' "$(curl -s "http://rss.accuweather.com/rss/liveweather_rss.asp?metric=$metric&locCode=$weatherCode" | sed -n '/Currently:/ s/.*: \(.*\): \([0-9]*\)\([CF]\).*/\2°\3, \1/p')"
+        unit="m"
+        [[ "$degrees" == "F" ]] && unit="u"
+        weather=$(curl -sf --max-time 2 "https://wttr.in/${weatherCode}?${unit}&format=%t,+%C")
+        displayMessage 'Weather............:' "${weather:-Unavailable}"
         ;;
     'CPUTEMP')
         cpu=$(</sys/class/thermal/thermal_zone0/temp)
@@ -189,14 +190,19 @@ function metrics {
         displayMessage 'GPU temperature....:' "${gpu}°$degrees"
         ;;
     'SSHLOGINS')
-        displayMessage 'SSH logins.........:' "Currently $(who -q | cut -c "9-11" | sed "1 d") user(s) logged in."
+        displayMessage 'SSH logins.........:' "Currently $(who | wc -l) user(s) logged in."
         ;;
     'LASTLOGIN')
-        displayMessage 'Last login.........:' "$(last -2 -a -F | awk 'NR==2 {print $1,"on",$3,$4,$5,$6,$7,"from " $15}')"
+        displayMessage 'Last login.........:' "$(last -2 -a -F | awk 'NR==2 {print $1, "on", $3, $4, $5, $6, $7, "from", $NF}')"
         ;;
     'MESSAGES')
+        if [[ -r /var/log/messages ]]; then
+            logs=$(tail -n 3 /var/log/messages)
+        elif command -v journalctl >/dev/null 2>&1; then
+            logs=$(journalctl -n 3 --no-pager -q 2>/dev/null)
+        fi
         displayMessage 'Last 3 messages....:' ""
-        displayMessage '' "${colour[reset]}$(tail -3 /var/log/messages)"
+        displayMessage '' "${colour[reset]}${logs}"
         ;;
     *)
         # default, do nothing
