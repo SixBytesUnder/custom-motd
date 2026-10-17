@@ -56,11 +56,11 @@ degrees=C
 #    cyan        6
 #    white       7
 declare -A colour=(
-    [header]=$(tput setaf 6)
-    [neutral]=$(tput setaf 2)
-    [info]=$(tput setaf 4)
-    [warning]=$(tput setaf 1)
-    [reset]=$(tput sgr0)
+    [header]=$'\e[36m'
+    [neutral]=$'\e[32m'
+    [info]=$'\e[34m'
+    [warning]=$'\e[31m'
+    [reset]=$'\e[0m'
 )
 
 
@@ -77,6 +77,7 @@ function displayMessage {
     if [ -z "$1" ]; then
         echo "${colour[neutral]}$2"
     else
+        local line
         while read line; do
             echo "${colour[header]}$1 ${colour[neutral]}$line";
         done <<< "$2"
@@ -86,7 +87,7 @@ function displayMessage {
 function metrics {
     case "$1" in
     'LOGOSMALL')
-        logo="${colour[neutral]}
+        local logo="${colour[neutral]}
          \\\ // ${colour[warning]}
          ◖ ● ◗
         ◖ ● ● ◗ ${colour[neutral]}Raspberry Pi${colour[warning]}
@@ -96,7 +97,7 @@ function metrics {
         displayMessage '' "$logo"
         ;;
     'LOGOBIG')
-        logo="${colour[neutral]}
+        local logo="${colour[neutral]}
           .~~.   .~~.
          '. \ ' ' / .'${colour[warning]}
           .~ .~~~..~.                      _                          _ 
@@ -116,6 +117,7 @@ function metrics {
         displayMessage 'Date...............:' "$(date +"%A, %e %B %Y, %r")"
         ;;
     'UPTIME')
+        local upSeconds sec min hour day
         let upSeconds="$(/usr/bin/cut -d. -f1 /proc/uptime)"
         let sec=$((${upSeconds}%60))
         let min=$((${upSeconds}/60%60))
@@ -130,6 +132,7 @@ function metrics {
         displayMessage 'Disk...............:' "$(df -hT -x tmpfs -x vfat | grep "^/dev/" | awk '{print $1" - "$5" (Free) / "$3" (Total)"}')"
         ;;
     'LOADAVERAGE')
+        local one five fifteen rest
         read one five fifteen rest < /proc/loadavg
         displayMessage 'Load average.......:' "${one}, ${five}, ${fifteen} (1, 5, 15 min)"
         ;;
@@ -137,6 +140,7 @@ function metrics {
         displayMessage 'Running processes..:' "$(ps -e --no-headers | wc -l)"
         ;;
     'IP')
+        local lip eip localIP externalIP
         lip=$(hostname -I 2>/dev/null | awk '{print $1}')
         eip=$(curl -sf --max-time 2 https://icanhazip.com/)
         if [ "$lip" ]; then
@@ -156,6 +160,7 @@ function metrics {
         displayMessage 'IP addresses.......:' "${localIP}${externalIP}"
         ;;
     'UPDATES')
+        local updates
         updates=$(apt-get -s dist-upgrade | grep -Po '^\d+(?= upgraded)')
         if [ -z "$updates" ]; then
             updates=0
@@ -169,12 +174,13 @@ function metrics {
         fi
         ;;
     'WEATHER')
-        unit="m"
+        local unit="m" weather
         [[ "$degrees" == "F" ]] && unit="u"
         weather=$(curl -sf --max-time 2 "https://wttr.in/${weatherCode}?${unit}&format=%t,+%C")
         displayMessage 'Weather............:' "${weather:-Unavailable}"
         ;;
     'CPUTEMP')
+        local cpu
         cpu=$(</sys/class/thermal/thermal_zone0/temp)
         cpu=$(echo "${cpu} 100 0.1" | awk '{printf "%.2f\n", $1/$2*$3}')
         if [ "$degrees" == "F" ]; then
@@ -183,6 +189,7 @@ function metrics {
         displayMessage 'CPU temperature....:' "${cpu}°$degrees"
         ;;
     'GPUTEMP')
+        local gpu
         gpu=$(/usr/bin/vcgencmd measure_temp | awk -F "[=']" '{print $2}')
         if [ "$degrees" == "F" ]; then
             gpu=$(echo "1.8 $gpu 32" | awk '{printf "%.2f\n", $1*$2+$3}')
@@ -196,6 +203,7 @@ function metrics {
         displayMessage 'Last login.........:' "$(last -2 -a -F | awk 'NR==2 {print $1, "on", $3, $4, $5, $6, $7, "from", $NF}')"
         ;;
     'MESSAGES')
+        local logs
         if [[ -r /var/log/messages ]]; then
             logs=$(tail -n 3 /var/log/messages)
         elif command -v journalctl >/dev/null 2>&1; then
