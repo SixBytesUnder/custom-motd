@@ -138,7 +138,7 @@ function metrics {
         ;;
     'IP')
         lip=$(hostname -I 2>/dev/null | awk '{print $1}')
-        eip=$(wget -q -O - http://icanhazip.com/ | tail)
+        eip=$(curl -sf --max-time 2 https://icanhazip.com/)
         if [ "$lip" ]; then
             localIP="local: ${lip}"
         else
