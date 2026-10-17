@@ -1,9 +1,6 @@
 #!/bin/bash
 
-#
-# Test whether bash supports arrays.
-# (Support for arrays was only added recently.)
-#
+# Ensure Bash 4.0+ is used (required for associative arrays via 'declare -A')
 if (( BASH_VERSINFO[0] < 4 )); then
   echo 'Failure: arrays not supported in your version of bash. Must be at least version 4 to have associative arrays.' >&2
   exit 2
@@ -27,8 +24,8 @@ settings=(
     LOADAVERAGE
     PROCESSES
     IP
-    # Please be aware UPDATES command may take a few seconds to run
-    # If you don't like waiting, just comment it out
+    # Note: External IP, UPDATES, and WEATHER are cached for $cacheTTL seconds
+    # to keep logins fast. Comment out any module you do not wish to run.
     UPDATES
     WEATHER
     CPUTEMP
@@ -61,16 +58,17 @@ tempWarnC=70
 memWarnPct=85
 diskWarnPct=85
 
-# Colour reference
-#    Colour    Value
-#    black       0
-#    red         1
-#    green       2
-#    yellow      3
-#    blue        4
-#    magenta     5
-#    cyan        6
-#    white       7
+# ANSI colour reference
+#    Colour    Code
+#    black     $'\e[30m'
+#    red       $'\e[31m'
+#    green     $'\e[32m'
+#    yellow    $'\e[33m'
+#    blue      $'\e[34m'
+#    magenta   $'\e[35m'
+#    cyan      $'\e[36m'
+#    white     $'\e[37m'
+#    reset     $'\e[0m'
 declare -A colour=(
     [header]=$'\e[36m'
     [neutral]=$'\e[32m'
@@ -123,6 +121,8 @@ function getCached {
     printf '%s\n' "$output"
 }
 
+# Evaluates and displays a single MOTD module
+# $1 is the module name from the settings array
 function metrics {
     case "$1" in
     'LOGOSMALL')
