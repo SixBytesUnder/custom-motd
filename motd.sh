@@ -1,7 +1,5 @@
 #!/bin/bash
 
-clear
-
 #
 # Test whether bash supports arrays.
 # (Support for arrays was only added recently.)
@@ -42,6 +40,12 @@ settings=(
     LASTLOGIN
     MESSAGES
 )
+
+# Clear terminal screen before displaying MOTD:
+#   "interactive" - clear only in an interactive terminal (safe for update-motd.d/scp)
+#   "always"      - always run clear
+#   "never"       - never clear the screen (keeps pre-login SSH/PAM messages visible)
+clearScreen="interactive"
 
 # Location for wttr.in weather service (e.g. "London", "New+York", or leave empty for auto-detection)
 weatherCode="London"
@@ -330,6 +334,18 @@ function metrics {
     esac
 }
 
+
+case "$clearScreen" in
+    always|true|1)
+        clear
+        ;;
+    interactive|auto)
+        [[ -t 1 && -n "$TERM" ]] && clear
+        ;;
+    never|false|0|*)
+        # Do not clear screen
+        ;;
+esac
 
 for item in "${settings[@]}"; do
     metrics "$item"

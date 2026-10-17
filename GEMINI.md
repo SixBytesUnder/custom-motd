@@ -23,7 +23,7 @@ The script is modular, allowing users to easily enable, disable, and reorder the
 
 1. **Configuration Section**: All user-configurable settings are consolidated at the top of the script. This includes:
   - An array `settings` that defines which information modules are displayed and in what order (`LOGOSMALL`, `LOGOBIG`, `MODEL`, `SYSTEM`, `DATE`, `UPTIME`, `MEMORY`, `DISKS`, `LOADAVERAGE`, `PROCESSES`, `IP`, `UPDATES`, `WEATHER`, `CPUTEMP`, `GPUTEMP`, `THROTTLED`, `SERVICES`, `DOCKER`, `SSHLOGINS`, `LASTLOGIN`, `MESSAGES`).
-  - Variables for location (`weatherCode`), temperature units (`degrees`), cache TTL (`cacheTTL`), and warning thresholds (`tempWarnC`, `memWarnPct`, `diskWarnPct`).
+  - Variables for screen-clearing behavior (`clearScreen`), location (`weatherCode`), temperature units (`degrees`), cache TTL (`cacheTTL`), and warning thresholds (`tempWarnC`, `memWarnPct`, `diskWarnPct`).
   - An associative array `colour` for defining terminal ANSI color codes.
 2. **Core Logic**:
   - A helper function `displayMessage` handles the formatted and colored output.
@@ -31,6 +31,7 @@ The script is modular, allowing users to easily enable, disable, and reorder the
   - A central function `metrics` contains a `case` statement that holds the logic for each individual information module.
 3. **Execution Flow**:
   - The script begins by checking for Bash 4+ version compatibility (for associative array support).
+  - It optionally clears the screen according to `clearScreen` (`"interactive"`, `"always"`, or `"never"`).
   - It then iterates through the user-defined `settings` array.
   - For each setting, it calls the `metrics` function to display the corresponding information panel.
   - Finally, it resets the terminal colors.
