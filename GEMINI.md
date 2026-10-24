@@ -41,7 +41,7 @@ The script is modular, allowing users to easily enable, disable, and reorder the
 The script relies on a set of standard and powerful command-line tools to gather and process information:
 
 - **System & Hardware Info**:
-  - `uname`, `date`, `df`, `ps`, `who`, `last`, `hostname`, `systemctl`, `docker`, `journalctl`
+  - `uname`, `date`, `df`, `ps`, `who`, `last` / `wtmpdb` / `journalctl`, `hostname`, `systemctl`, `docker`
   - Direct reads from `/proc` filesystem (`/proc/uptime`, `/proc/meminfo`, `/proc/loadavg`, `/proc/device-tree/model`).
   - Direct reads from `/sys` filesystem for CPU temperature (`/sys/class/thermal/thermal_zone0/temp`).
   - `vcgencmd` (Raspberry Pi specific) for GPU temperature and throttling/under-voltage status (`get_throttled`).

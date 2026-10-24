@@ -315,8 +315,60 @@ function metrics {
         displayMessage 'SSH logins.........:' "Currently $(who | wc -l) user(s) logged in."
         ;;
     'LASTLOGIN')
-        displayMessage 'Last login.........:' "$(last -2 -a -F | awk 'NR==2 {print $1, "on", $3, $4, $5, $6, $7, "from", $NF}')"
-        ;;
+      local lastLogin=""
+      if command -v last >/dev/null 2>&1; then
+        lastLogin=$(last -2 -a -F 2>/dev/null | awk 'NR==2 {print $1, "on", $3, $4, $5, $6, $7, "from", $NF}')
+      elif command -v wtmpdb >/dev/null 2>&1; then
+        lastLogin=$(wtmpdb last -2 -a -F 2>/dev/null | awk 'NR==2 {print $1, "on", $3, $4, $5, $6, $7, "from", $NF}')
+      elif command -v journalctl >/dev/null 2>&1; then
+        local sshLogs
+        sshLogs=$(journalctl _COMM=sshd --no-pager -q -n 20 2>/dev/null | grep -E 'Accepted (publickey|password)')
+        if [[ -n "$sshLogs" ]]; then
+          local lineCount
+          lineCount=$(printf '%s\n' "$sshLogs" | grep -c .)
+          local targetLine
+          if (( lineCount > 1 )); then
+            targetLine=$(printf '%s\n' "$sshLogs" | tail -n 2 | head -n 1)
+          else
+            targetLine=$(printf '%s\n' "$sshLogs" | tail -n 1)
+          fi
+          lastLogin=$(printf '%s\n' "$targetLine" | awk '{
+            u = ""; ip = ""
+            for (i = 1; i <= NF; i++) {
+              if ($i == "for") u = $(i+1)
+              if ($i == "from") ip = $(i+1)
+            }
+            if (u != "") print u, "on", $1, $2, $3, "from", ip
+          }')
+        else
+          local logindLogs
+          logindLogs=$(journalctl -u systemd-logind --no-pager -q -n 20 2>/dev/null | grep 'New session')
+          if [[ -n "$logindLogs" ]]; then
+            local lineCount
+            lineCount=$(printf '%s\n' "$logindLogs" | grep -c .)
+            local targetLine
+            if (( lineCount > 1 )); then
+              targetLine=$(printf '%s\n' "$logindLogs" | tail -n 2 | head -n 1)
+            else
+              targetLine=$(printf '%s\n' "$logindLogs" | tail -n 1)
+            fi
+            lastLogin=$(printf '%s\n' "$targetLine" | awk '{
+              u = ""
+              for (i = 1; i <= NF; i++) {
+                if ($i == "user") u = $(i+1)
+              }
+              sub(/\.$/, "", u)
+              if (u != "") print u, "on", $1, $2, $3, "from local"
+            }')
+          fi
+        fi
+      elif command -v lastlog2 >/dev/null 2>&1; then
+        lastLogin=$(lastlog2 -u "$USER" 2>/dev/null | awk 'NR==2 && $2 !~ /\*\*Never/ {print $1, "on", $2, "from", $3, "at", $4, $5, $6, $7}')
+      elif command -v lastlog >/dev/null 2>&1; then
+        lastLogin=$(lastlog -u "$USER" 2>/dev/null | awk 'NR==2 && $2 !~ /\*\*Never/ {print $1, "on", $2, "from", $3, "at", $4, $5, $6, $7}')
+      fi
+      displayMessage 'Last login.........:' "${lastLogin:-None}"
+      ;;
     'MESSAGES')
         local logs
         if [[ -r /var/log/messages ]]; then
